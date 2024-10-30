@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Supplier;
 import javax.swing.JTextArea;
 import org.json.JSONArray;
@@ -95,7 +97,8 @@ public class PenghitungUmurHelper {
                 JSONObject event = events.getJSONObject(i);
                 String year = event.getString("year");
                 String description = event.getString("description");
-                String peristiwa = year + ": " + description;
+                String translatedDescription = translateToIndonesian(description);
+                String peristiwa = year + ": " + translatedDescription;
                 javax.swing.SwingUtilities.invokeLater(() -> txtAreaPeristiwa.append(peristiwa + "\n"));
             }
             if (events.length() == 0) {
@@ -106,4 +109,32 @@ public class PenghitungUmurHelper {
         }
 }   
 
+    
+    public String translateToIndonesian(String text) {
+        try {
+            String encodedText = URLEncoder.encode(text, StandardCharsets.UTF_8.toString());
+            String urlString = "https://lingva.ml/api/v1/en/id/" + encodedText;
+            URL url = new URL(urlString);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            Thread.sleep(2000);
+
+            StringBuilder content;
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"))) {
+                content = new StringBuilder();
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    content.append(inputLine);
+                }
+            }
+            conn.disconnect();
+
+            JSONObject json = new JSONObject(content.toString());
+            String translation = json.getString("translation");
+            
+            return translation.replace("+", " ");
+        } catch (Exception e) {
+            return text + " (Gagal diterjemahkan)";
+        }
+    }
 }
